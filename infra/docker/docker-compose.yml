@@ -1,0 +1,31 @@
+version: '3'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: parkcap
+    ports:
+      - '5432:5432'
+  server:
+    build:
+      context: ../..
+      dockerfile: infra/docker/server.Dockerfile
+    command: pnpm --filter @parkcap/server dev
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/parkcap
+      JWT_SECRET: changeme
+    ports:
+      - '3000:3000'
+    depends_on:
+      - db
+  admin:
+    build:
+      context: ../..
+      dockerfile: infra/docker/admin.Dockerfile
+    command: pnpm --filter @parkcap/admin dev
+    ports:
+      - '5174:5173'
+    depends_on:
+      - server
