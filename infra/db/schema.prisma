@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role { CITIZEN SUPERVISOR ADMIN }
+
+enum SpaceType { COMMON MOTO DISABLED }
+
+enum TicketStatus { ACTIVE EXPIRED CANCELLED }
+
+enum PaymentProvider { Stripe MercadoPago }
+
+enum PaymentStatus { SUCCESS FAILED PENDING }
+
+enum NotificationChannel { PUSH EMAIL SMS }
+
+enum NotificationType { EXPIRY_WARNING EXPIRED }
+
+model User {
+  id            Int           @id @default(autoincrement())
+  email         String        @unique
+  phone         String
+  password_hash String
+  role          Role          @default(CITIZEN)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  tickets       Ticket[]
+  notifications Notification[]
+}
+
+model Zone {
+  id          Int     @id @default(autoincrement())
+  code        String  @unique
+  name        String
+  description String?
+  active      Boolean @default(true)
+  spaces      Space[]
+  rates       Rate[]
+  tickets     Ticket[]
+}
+
+model Space {
+  id       Int       @id @default(autoincrement())
+  zoneId   Int
+  number   Int
+  type     SpaceType
+  active   Boolean  @default(true)
+  notes    String?
+  zone     Zone     @relation(fields: [zoneId], references: [id])
+  tickets  Ticket[]
+}
+
+model Rate {
+  id                  Int       @id @default(autoincrement())
+  zoneId              Int
+  type                SpaceType
+  pricePerMinute      Decimal   @db.Decimal(10, 2)
+  minPurchaseMinutes  Int
+  maxContinuousMinutes Int
+  graceMinutes        Int
+  zone                Zone      @relation(fields: [zoneId], references: [id])
+}
+
+model Ticket {
+  id           Int       @id @default(autoincrement())
+  userId       Int
+  zoneId       Int
+  spaceId      Int
+  startTime    DateTime
+  endTime      DateTime
+  status       TicketStatus
+  totalPaid    Decimal    @db.Decimal(10, 2)
+  providerRef  String?
+  user         User       @relation(fields: [userId], references: [id])
+  zone         Zone       @relation(fields: [zoneId], references: [id])
+  space        Space      @relation(fields: [spaceId], references: [id])
+  extensions   Extension[]
+  payments     Payment[]
+  notifications Notification[]
+  fines        Fine[]
+}
+
+model Extension {
+  id          Int     @id @default(autoincrement())
+  ticketId    Int
+  minutesAdded Int
+  paid        Boolean
+  at          DateTime @default(now())
+  ticket      Ticket   @relation(fields: [ticketId], references: [id])
+}
+
+model Payment {
+  id          Int       @id @default(autoincrement())
+  ticketId    Int
+  amount      Decimal   @db.Decimal(10, 2)
+  provider    PaymentProvider
+  status      PaymentStatus
+  providerRef String?
+  createdAt   DateTime  @default(now())
+  ticket      Ticket    @relation(fields: [ticketId], references: [id])
+}
+
+model Notification {
+  id       Int                @id @default(autoincrement())
+  userId   Int
+  ticketId Int?
+  channel  NotificationChannel
+  type     NotificationType
+  sentAt   DateTime           @default(now())
+  user     User               @relation(fields: [userId], references: [id])
+  ticket   Ticket?            @relation(fields: [ticketId], references: [id])
+}
+
+model Fine {
+  id           Int      @id @default(autoincrement())
+  ticketId     Int
+  supervisorId Int
+  reason       String
+  amount       Decimal @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
+  ticket       Ticket   @relation(fields: [ticketId], references: [id])
+  supervisor   User     @relation(fields: [supervisorId], references: [id])
+}

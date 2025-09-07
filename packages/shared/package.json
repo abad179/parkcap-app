@@ -1,0 +1,8 @@
+{
+  "name": "@parkcap/shared",
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "zod": "^3.22.2"
+  }
+}
